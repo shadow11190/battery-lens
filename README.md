@@ -2,7 +2,7 @@
 
 **[立即開啟網站 →](https://shadow11190.github.io/battery-lens/)** · [網站內操作教學](https://shadow11190.github.io/battery-lens/#guide)
 
-繁體中文電池報告分析網站。純 HTML/CSS/JavaScript，不需後端或安裝依賴，可直接部署到 GitHub Pages。檔案在瀏覽器的 Web Worker 中分段解壓、逐行解析，沒有報告上傳、追蹤程式或 localStorage。
+直接開啟就能使用的繁體中文電池報告分析網站，不需安裝 App 或登入帳號。報告在你的瀏覽器內分段解壓、逐行解析，不會上傳報告內容，也不做使用追蹤。
 
 v1.1 支援完整大型 bugreport ZIP：壓縮檔上限 1 GiB、相關報告解壓總量上限 2 GiB，並顯示掃描進度。不必先解壓，不會把整份 ZIP 或主報告一次載入記憶體。
 
@@ -72,19 +72,6 @@ adb bugreport battery-report.zip
 - GitHub Pages 一般存取記錄與網站請求仍受 GitHub 隱私政策約束。報告本身不離開瀏覽器，除非使用者自行另行分享。
 - 清除資料是解除記憶體引用，並非密碼學安全抹除。請勿將真實報告放到儲存庫或 issue。
 
-## 本機開發與驗證
-
-需 Node.js 22 或更新版，不必 `npm install`。
-
-```sh
-npm test
-npm run dev
-```
-
-開啟 `http://127.0.0.1:4173`。不要直接雙擊 HTML 使用 `file://`，瀏覽器會限制 module Worker。
-
-20 項測試涵蓋容量單位、假健康度欄位排除、手動容量、缺值、衝突、多電池、iPhone 與 Samsung 欄位、日期驗證、超過 100%、ZIP 串流與完整性、超過舊 120 MiB 上限的串流、UTF-16 和跨區塊行號。測試資料為合成值，不含使用者報告。
-
 ## 更多電池資料
 
 結果會顯示首次使用日期、製造日期、報告電量、溫度、電壓、充電狀態、Samsung BSOH 及 Samsung 等效循環估算；每項附欄位與原始行號，缺少資料顯示「未提供」。多筆溫度／電壓／電量顯示報告範圍，不假稱為即時測量。
@@ -97,17 +84,6 @@ npm run dev
 
 日期僅表示報告欄位聲稱的電池日期，不等於購買日期、手機啟用日期或保固起算日。若報告未記錄，工具無法取得。
 
-## 發布至 GitHub Pages（不需 Actions 權杖）
-
-1. 登入 GitHub，建立公開儲存庫，例如 `battery-lens`。
-2. 上傳此資料夾內容；`index.html`、`app.js`、`parser.js`、`worker.js`、`zip.js`、CSS 與圖示必須在根目錄。保留 `.nojekyll`。不要上傳手機報告。
-3. Settings → Pages → Build and deployment。
-4. Source 選 **Deploy from a branch**，Branch 選 **main**，資料夾選 **/ (root)**，按 Save。
-5. 在 Actions 等待 `pages build and deployment` 成功，再開啟 Pages 顯示的網址，通常是 `https://你的帳號.github.io/battery-lens/`。
-6. 之後更新 main 檔案即可重新部署。所有資源使用相對路徑，支援專案子目錄。
-
-若 Pages 顯示 404，確認分支與資料夾、根目錄 index.html 以及建置狀態；若私人庫無法使用 Pages，依 GitHub 方案調整或使用公開庫。
-
 ## 來源
 
 - [Android 擷取與閱讀偵錯報告](https://developer.android.com/studio/debug/bug-report)
@@ -116,9 +92,8 @@ npm run dev
 - [Android BatteryManager 日期單位](https://android.googlesource.com/platform/frameworks/base.git/+/master/core/java/android/os/BatteryManager.java)
 - [Samsung 欄位的開源相容性實作](https://github.com/willbilec/android-battery-health/blob/main/docs/development.md)（第三方專案，非 Samsung 官方欄位保證）
 - [Apple 分享分析與診斷資料](https://support.apple.com/108971)
-- [GitHub Pages 發布來源設定](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 
-以上官方文件支持報告取得方式、Android 欄位與部署流程；**Apple 文件並未保證本工具讀取的內部電池欄位**。
+以上來源用於說明報告取得方式與電池欄位；**Apple 文件並未保證本工具讀取的內部電池欄位**。
 
 ## 授權
 

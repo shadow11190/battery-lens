@@ -2,7 +2,9 @@
 
 **[立即開啟網站 →](https://shadow11190.github.io/battery-lens/)** · [網站內操作教學](https://shadow11190.github.io/battery-lens/#guide)
 
-繁體中文電池報告分析網站。純 HTML/CSS/JavaScript，不需後端或安裝依賴，可直接部署到 GitHub Pages。檔案在瀏覽器的 Web Worker 中解析，沒有報告上傳、追蹤程式或 localStorage。
+繁體中文電池報告分析網站。純 HTML/CSS/JavaScript，不需後端或安裝依賴，可直接部署到 GitHub Pages。檔案在瀏覽器的 Web Worker 中分段解壓、逐行解析，沒有報告上傳、追蹤程式或 localStorage。
+
+v1.1 支援完整大型 bugreport ZIP：壓縮檔上限 1 GiB、相關報告解壓總量上限 2 GiB，並顯示掃描進度。不必先解壓，不會把整份 ZIP 或主報告一次載入記憶體。
 
 ## 使用網站
 
@@ -62,9 +64,9 @@ adb bugreport battery-report.zip
 ## 檔案格式、隱私與限制
 
 - 文字檔可為 TXT、LOG、JSON、IPS、IPS.CA.SYNCED；支援 UTF-8 與含 BOM 的 UTF-16。
-- 每份檔案上限 80 MiB；貼上文字上限 20 Mi 字元。較大的報告請先選取相關段落。
+- 每份檔案上限 1 GiB；貼上文字上限 20 Mi 字元。ZIP 只讀索引及選中的報告串流；逐行解碼後只保留白名單欄位。記憶體仍會受瀏覽器、解壓緩衝及索引影響，不保證任何裝置都能處理上限大小。
 - ZIP 僅讀取 `bugreport*.txt`、`dumpstate*.txt` 及 `power_supply/<電池>/charge_full`、`charge_full_design`、`cycle_count`。不是任意 ZIP 分析器；不讀圖片或其他私人檔案。
-- ZIP 支援 Store / Deflate、CRC32 檢查。最多 10,000 個索引項，選中的報告最多 100 個、解壓總量 120 MiB。不支援 ZIP64、加密、分卷 ZIP、巢狀壓縮；請先解壓並選取文字檔。
+- ZIP 支援 Store / Deflate、串流 CRC32 檢查。最多 10,000 個索引項，索引上限 16 MiB，選中的報告最多 100 個、解壓總量 2 GiB。不支援 ZIP64、加密、分卷 ZIP、巢狀壓縮；請先解壓並選取文字檔。單行文字上限約 4 MiB，每份報告最多保留 5,000 個不同欄位值。
 - ZIP Deflate 使用瀏覽器原生 `DecompressionStream('deflate-raw')`。不支援的瀏覽器請先解壓；文字解析需要 Worker 與 ES modules。
 - 不使用第三方 CDN、字型或分析服務。CSP 的 `connect-src 'none'` 禁止應用程式發送報告網路請求；靜態資源仍需由網站主機載入。
 - GitHub Pages 一般存取記錄與網站請求仍受 GitHub 隱私政策約束。報告本身不離開瀏覽器，除非使用者自行另行分享。
@@ -81,7 +83,19 @@ npm run dev
 
 開啟 `http://127.0.0.1:4173`。不要直接雙擊 HTML 使用 `file://`，瀏覽器會限制 module Worker。
 
-測試涵蓋容量單位、假健康度欄位排除、手動容量、缺值、衝突、多電池、iPhone 欄位、超過 100%、ZIP 壓縮與完整性、大小限制、UTF-16。
+20 項測試涵蓋容量單位、假健康度欄位排除、手動容量、缺值、衝突、多電池、iPhone 與 Samsung 欄位、日期驗證、超過 100%、ZIP 串流與完整性、超過舊 120 MiB 上限的串流、UTF-16 和跨區塊行號。測試資料為合成值，不含使用者報告。
+
+## 更多電池資料
+
+結果會顯示首次使用日期、製造日期、報告電量、溫度、電壓、充電狀態、Samsung BSOH 及 Samsung 等效循環估算；每項附欄位與原始行號，缺少資料顯示「未提供」。多筆溫度／電壓／電量顯示報告範圍，不假稱為即時測量。
+
+- Android `batteryFirstUsageSeconds`、`batteryManufacturingDateSeconds` 及 sysfs `first_usage_date`、`manufacturing_date` 以 Unix epoch 秒轉為 UTC 日期。
+- Samsung `battery FirstUseDate`、`mSavedBatteryFirstUsedDate`、`mSavedBatteryFirstUseDate`、`mSavedBatteryManufactureDate` 嘗試讀取 YYYYMMDD（含方括號）。拒絕不存在的日曆日期、0 與不合理年份；不從檔名或報告生成時間推算首次使用日期。
+- `batteryLevel` 為百分比、`batteryTemperatureTenthsCelsius` 以十分之一攝氏度換算、`batteryVoltageMillivolts` 為 mV、`batteryStatus` 為 Android 狀態代碼。一般 `level`、`temperature`、`voltage`、`status` 只在 `DUMP OF SERVICE battery:` 區段讀取，避免抓到其他服務。
+- Samsung `mSavedBatteryAsoc` 作為廠商回報的健康度，優先於容量比值；`mSavedBatteryBsoh` 分開顯示。`mSavedBatteryUsage / 100` 標為等效循環估算，不取代 Android 的循環計數。標準循環為 0 且廠商使用量不為 0 時會提示可能是未實作值。
+- Samsung 內部欄位不是穩定的跨機型公開標準，不能把 ASOC、BSOH 和容量比值視為完全相同的指標。容量比值為 100% 也不保證電池沒有老化。
+
+日期僅表示報告欄位聲稱的電池日期，不等於購買日期、手機啟用日期或保固起算日。若報告未記錄，工具無法取得。
 
 ## 發布至 GitHub Pages（不需 Actions 權杖）
 
@@ -99,6 +113,8 @@ npm run dev
 - [Android 擷取與閱讀偵錯報告](https://developer.android.com/studio/debug/bug-report)
 - [AOSP Health HAL 與設計容量單位](https://source.android.com/docs/core/perf/health)
 - [AOSP BatteryMonitor 欄位與 sysfs 對應](https://android.googlesource.com/platform/system/core/+/refs/heads/master/healthd/BatteryMonitor.cpp)
+- [Android BatteryManager 日期單位](https://android.googlesource.com/platform/frameworks/base.git/+/master/core/java/android/os/BatteryManager.java)
+- [Samsung 欄位的開源相容性實作](https://github.com/willbilec/android-battery-health/blob/main/docs/development.md)（第三方專案，非 Samsung 官方欄位保證）
 - [Apple 分享分析與診斷資料](https://support.apple.com/108971)
 - [GitHub Pages 發布來源設定](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)
 

@@ -1,4 +1,4 @@
-import {summarize} from './parser.js';
+import {summarize} from './parser.js?v=1.1.0';
 const $=id=>document.getElementById(id);
 const demoText='示範資料，非真實手機報告\nPOWER_SUPPLY_CHARGE_FULL=4320000\nPOWER_SUPPLY_CHARGE_FULL_DESIGN=5000000\nPOWER_SUPPLY_CYCLE_COUNT=328\nlevel: 67\nhealth: 2\ncharge counter: 2894400';
 let reports=[],worker=null,busy=false,isDemo=false,summary=null,exportUrl=null;
@@ -14,8 +14,9 @@ async function analyze(data,demo=false){
  worker?.terminate();reports=[];summary=null;isDemo=demo;$('manualDesign').value='';$('manualError').textContent='';$('result').hidden=true;$('emptyResult').hidden=false;$('evidenceBody').replaceChildren();$('evidenceCount').textContent='0';$('resultBadge').textContent='正在解析';status('在本機解析中，較大報告需要一些時間…');disable(true);
  $('fileLabel').textContent=demo?'示範資料 · 非真實測量':data.file?.name||'貼上的報告';
  try{
-  worker=new Worker(new URL('./worker.js',import.meta.url),{type:'module'});
+  worker=new Worker(new URL('./worker.js?v=1.1.0',import.meta.url),{type:'module'});
   worker.onmessage=({data:result})=>{
+   if(result.progress){const p=result.progress;status(`本機掃描 ${p.total?Math.floor(p.processed/p.total*100):0}% · ${(p.processed/1048576).toFixed(1)} / ${(p.total/1048576).toFixed(1)} MiB（解壓後）`);return;}
    worker.terminate();worker=null;disable(false);
    if(result.error){$('resultBadge').textContent='讀取失敗';status(result.error,true);return;}
    reports=result.reports;const choices=reports.map((r,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${r.name} (${r.evidence.length} 個欄位)`;return o;});$('source').replaceChildren(...choices);
@@ -34,9 +35,10 @@ function render(){
  $('method').textContent=summary.method;$('platform').textContent=summary.platform==='ios'?'iPhone · 實驗性':summary.platform==='android'?'Android':summary.platform;
  $('full').textContent=summary.full===null?'—':`${nf.format(summary.full)} mAh`;$('design').textContent=summary.design===null?'—':`${nf.format(summary.design)} mAh`;$('cycles').textContent=summary.cycles===null?'—':nf.format(summary.cycles);
  $('capacityFill').style.width=`${Math.min(100,summary.health||0)}%`;
+ $('extraMetrics').replaceChildren(...summary.details.map(d=>{const item=document.createElement('div'),label=document.createElement('span'),value=document.createElement('strong');label.textContent=d.label;value.textContent=d.display;item.append(label,value);if(d.sources.length){const source=document.createElement('small');source.textContent=d.sources.slice(0,2).map(s=>`${s.key} · ${s.source}:${s.line}`).join(' / ')+(d.sources.length>2?`；另 ${d.sources.length-2} 筆，見原始欄位`:'');item.append(source);}return item;}));
  $('warnings').replaceChildren(...summary.warnings.map(w=>Object.assign(document.createElement('li'),{textContent:w})));
  $('evidenceCount').textContent=summary.evidence.length;
- $('evidenceBody').replaceChildren(...summary.evidence.map(e=>{const tr=document.createElement('tr');for(const content of [e.key,`${e.raw} ${e.unit}`,`${nf.format(e.value)} ${e.kind==='full'||e.kind==='design'?'mAh':e.unit}`,`${e.source}:${e.line}${e.group?' · '+e.group:''}`]){const td=document.createElement('td');td.textContent=content;tr.append(td);}return tr;}));
+ $('evidenceBody').replaceChildren(...summary.evidence.map(e=>{const tr=document.createElement('tr');for(const content of [e.key,`${e.raw} ${e.unit}`,typeof e.value==='string'?e.value:`${nf.format(e.value)} ${e.kind==='full'||e.kind==='design'?'mAh':e.unit}`,`${e.source}:${e.line}${e.group?' · '+e.group:''}`]){const td=document.createElement('td');td.textContent=content;tr.append(td);}return tr;}));
 }
 $('source').onchange=()=>{$('manualDesign').value='';$('manualError').textContent='';render();};
 $('applyDesign').onclick=()=>{const value=$('manualDesign').value;if($('manualDesign').validity.badInput||(value!==''&&(!Number.isFinite(Number(value))||Number(value)<10||Number(value)>100000))){$('manualError').textContent='請輸入 10～100,000 mAh，或留空以使用報告值。';return;}$('manualError').textContent='';render();};
@@ -47,4 +49,4 @@ $('demo').onclick=()=>analyze({text:demoText},true);$('clear').onclick=reset;
 for(const event of ['dragenter','dragover'])$('dropzone').addEventListener(event,e=>{e.preventDefault();if(!busy)$('dropzone').classList.add('drag');});
 for(const event of ['dragleave','drop'])$('dropzone').addEventListener(event,e=>{e.preventDefault();$('dropzone').classList.remove('drag');});
 $('dropzone').addEventListener('drop',e=>{if(busy)return;const files=e.dataTransfer.files;if(files.length!==1){status('請一次選取一份報告，避免混用手機資料。',true);return;}analyze({file:files[0]});});
-$('export').onclick=()=>{if(!summary)return;const output={tool:'Battery Lens',version:'1.0.0',createdAt:new Date().toISOString(),demo:isDemo,source:reports[Number($('source').value)].name,healthPercent:summary.health,method:summary.method,fullChargeCapacityMah:summary.full,designCapacityMah:summary.design,designCapacityManuallyProvided:summary.manual,cycleCount:summary.cycles,warnings:summary.warnings,evidence:summary.evidence};if(exportUrl)URL.revokeObjectURL(exportUrl);exportUrl=URL.createObjectURL(new Blob([JSON.stringify(output,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=exportUrl;a.download=isDemo?'battery-lens-demo.json':'battery-lens-summary.json';a.click();};
+$('export').onclick=()=>{if(!summary)return;const output={tool:'Battery Lens',version:'1.1.0',createdAt:new Date().toISOString(),demo:isDemo,source:reports[Number($('source').value)].name,healthPercent:summary.health,method:summary.method,fullChargeCapacityMah:summary.full,designCapacityMah:summary.design,designCapacityManuallyProvided:summary.manual,cycleCount:summary.cycles,additionalMetrics:summary.details,warnings:summary.warnings,evidence:summary.evidence};if(exportUrl)URL.revokeObjectURL(exportUrl);exportUrl=URL.createObjectURL(new Blob([JSON.stringify(output,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=exportUrl;a.download=isDemo?'battery-lens-demo.json':'battery-lens-summary.json';a.click();};

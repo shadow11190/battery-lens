@@ -1,4 +1,4 @@
-import {parseReport,scanReportStream} from './parser.js?v=1.1.0';
+import {parseReport,scanReportStream} from './parser.js?v=1.2.0';
 import {readZipReports,MAX_FILE} from './zip.js?v=1.1.0';
 self.onmessage=async({data})=>{
  try{

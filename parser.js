@@ -49,6 +49,7 @@ export function createReportParser(name='報告') {
  function feedLine(line) {
   lineNumber++;
   if(/^DUMP OF SERVICE\s+/i.test(line))inBatteryService=/^DUMP OF SERVICE battery\s*:/i.test(line);
+  if(/^\s*Current Battery Service state\s*:/i.test(line))inBatteryService=true;
   if(pending){if(/^\s*\d+\s*$/.test(line))add(pending.def,Number(line),pending.def.defaultUnit,pending.group,pending.line);pending=null;}
   // Path-qualified batteries are kept separate, including ZIP sysfs members.
   const path=(line.match(/\/power_supply\/([^/\s:]+)\//)||name.match(/\/power_supply\/([^/\s:]+)\//))?.[1];
@@ -100,6 +101,10 @@ export function summarize(report, manualDesign=null) {
   return values.length===1?values[0]:null;
  };
  const full=field('full'), foundDesign=field('design'), percent=field('percent'), cycles=field('cycles');
+ const usageValues=[...new Set(e.filter(x=>x.kind==='usage').map(x=>x.value))];
+ const estimatedCycles=usageValues.length===1&&usageValues[0]>0?usageValues[0]/100:null;
+ const useEstimatedCycles=estimatedCycles!==null&&(cycles===null||cycles===0);
+ const cycleDisplay={value:useEstimatedCycles?estimatedCycles:cycles,estimated:useEstimatedCycles,label:useEstimatedCycles?'等效循環（估算）':'標準循環次數',source:useEstimatedCycles?'mSavedBatteryUsage ÷ 100':'報告標準循環欄位',standardReportedValue:cycles};
  const manual=manualDesign!==null && manualDesign!=='' ? Number(manualDesign):null;
  const validManual=manual!==null&&Number.isFinite(manual)&&manual>=10&&manual<=100000;
  const design=validManual?manual:foundDesign;
@@ -124,5 +129,5 @@ export function summarize(report, manualDesign=null) {
    else {const converted=values.map(v=>kind==='usage'?v/100:v),format=v=>new Intl.NumberFormat('zh-TW',{maximumFractionDigits:2}).format(v);display=converted.length===1?format(converted[0]):`${format(Math.min(...converted))}～${format(Math.max(...converted))}`;display+=({level:'%',temperature:' °C',voltage:' mV',bsoh:'%',usage:' 次'}[kind]||'');}}
   return {kind,label,display,sources:entries.map(x=>({source:x.source,line:x.line,key:x.key}))};
  });
- return {health,method,full,design,cycles,details,platform:platforms.join(' / ')||'未知',manual:validManual,warnings,evidence:e};
+ return {health,method,full,design,cycles,cycleDisplay,details,platform:platforms.join(' / ')||'未知',manual:validManual,warnings,evidence:e};
 }

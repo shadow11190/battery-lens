@@ -13,7 +13,8 @@ v1.1 支援完整大型 bugreport ZIP：壓縮檔上限 1 GiB、相關報告解�
 3. ZIP 若含多份相關報告，用「報告來源」逐一切換。各 TXT 分開計算，不混合不同報告；同一個 sysfs 電池目錄的檔案才合併。
 4. 展開「原始欄位」，查看欄位、原始值、換算值、來源檔名與行號。
 5. 若有滿充容量、但沒有設計容量，可根據該手機或電池的官方規格手動輸入 **mAh**，按「套用」。手動值會明確標示並記錄到摘要。切換來源會清除手動值。
-6. 「下載分析摘要」產生 JSON；摘要包含已辨識欄位及檔名，分享前檢查。「清除本次資料」會終止解析工作並釋放本頁引用。
+6. 「下載圖片 PNG」會產生可直接開啟、分享的電池摘要圖，包含健康度、容量、日期、其他數據與解讀提醒。圖片在你的裝置產生，不會上傳。示範資料及手動設計容量會清楚標記。
+7. 「下載資料 JSON」保留完整欄位、來源行號與計算資料，適合進一步處理；可用記事本或文字編輯器開啟，並非圖片。摘要包含來源檔名，分享前請檢查。「清除本次資料」會終止解析工作並釋放本頁引用。
 
 ## Android：取得偵錯報告
 
@@ -29,6 +30,31 @@ adb bugreport battery-report.zip
 ```
 
 不需 root。報告內容由廠商決定；有些手機不提供滿充／設計容量，因此無法用報告計算。不要以解鎖或 root 作為必要步驟。
+
+## Shizuku：手機直接匯出小型電池報告
+
+Android 11 以上可透過無線偵錯啟動，不需 root 或電腦。Android 10 以下請依 [Shizuku 官方啟動手冊](https://shizuku.rikka.app/zh-hant/guide/setup/) 使用電腦啟動。
+
+1. 安裝官方 Shizuku，以及支援 Shizuku 的終端工具，例如 [aShell You](https://github.com/DP-Hridayan/aShellYou)。Shizuku 本身不是輸入命令的終端。
+2. 手機連上 Wi-Fi，開啟開發人員選項與無線偵錯。在 Shizuku 開始配對，再到無線偵錯的「使用配對碼配對裝置」，將配對碼輸入 Shizuku 通知。
+3. 回到 Shizuku 按啟動，確認正在執行；重新開機後通常要再啟動一次。
+4. 開啟 aShell You，選擇 Shizuku 執行模式並授權。輸入下方命令，**不必加 adb shell**：
+
+```sh
+dumpsys battery
+```
+
+5. 用終端的儲存／分享輸出功能存為 `battery-report.txt`，再匯入本網站；或複製完整輸出到「貼上文字」。保留 `Current Battery Service state:` 開頭，網站才能辨識電量、溫度與電壓。
+
+用電腦 ADB 取得同一份小報告也可以：
+
+```sh
+adb shell dumpsys battery > battery-report.txt
+```
+
+檔案會存到電腦目前資料夾。Windows PowerShell 未設定 PATH 時使用 `./adb.exe` 取代 `adb`。
+
+小報告的欄位由手機廠商決定，不保證有日期、健康度或滿充容量；缺少時可改用完整 bugreport ZIP。Permission Denial 表示權限限制，請檢查 Shizuku 是否執行、終端是否獲得授權。僅執行讀取命令，不加上修改或模擬電池的子命令。
 
 ## iPhone：取得分析記錄（實驗性）
 
@@ -79,7 +105,8 @@ adb bugreport battery-report.zip
 - Android `batteryFirstUsageSeconds`、`batteryManufacturingDateSeconds` 及 sysfs `first_usage_date`、`manufacturing_date` 以 Unix epoch 秒轉為 UTC 日期。
 - Samsung `battery FirstUseDate`、`mSavedBatteryFirstUsedDate`、`mSavedBatteryFirstUseDate`、`mSavedBatteryManufactureDate` 嘗試讀取 YYYYMMDD（含方括號）。拒絕不存在的日曆日期、0 與不合理年份；不從檔名或報告生成時間推算首次使用日期。
 - `batteryLevel` 為百分比、`batteryTemperatureTenthsCelsius` 以十分之一攝氏度換算、`batteryVoltageMillivolts` 為 mV、`batteryStatus` 為 Android 狀態代碼。一般 `level`、`temperature`、`voltage`、`status` 只在 `DUMP OF SERVICE battery:` 區段讀取，避免抓到其他服務。
-- Samsung `mSavedBatteryAsoc` 作為廠商回報的健康度，優先於容量比值；`mSavedBatteryBsoh` 分開顯示。`mSavedBatteryUsage / 100` 標為等效循環估算，不取代 Android 的循環計數。標準循環為 0 且廠商使用量不為 0 時會提示可能是未實作值。
+- Samsung `mSavedBatteryAsoc` 作為廠商回報的健康度，優先於容量比值；`mSavedBatteryBsoh` 分開顯示。有有效的標準循環時優先顯示；標準循環缺少或為 0、且有唯一且大於 0 的 Samsung 使用量時，上方改顯示 `mSavedBatteryUsage / 100` 的等效循環，標記「估算」。例如合成使用量 45678 顯示約 456.78 次。不任選互相矛盾的使用量。
+- JSON 的 `cycleCount` 保留標準欄位原始數字；`displayedCycle` 另存畫面使用的數值、是否估算與來源。PNG 顯示與網站相同的循環數字與估算標籤，不會把廠商換算值偽裝成標準計數。
 - Samsung 內部欄位不是穩定的跨機型公開標準，不能把 ASOC、BSOH 和容量比值視為完全相同的指標。容量比值為 100% 也不保證電池沒有老化。
 
 日期僅表示報告欄位聲稱的電池日期，不等於購買日期、手機啟用日期或保固起算日。若報告未記錄，工具無法取得。

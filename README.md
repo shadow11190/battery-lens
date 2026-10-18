@@ -1,5 +1,7 @@
 # Battery Lens｜電池透視
 
+**[立即開啟網站 →](https://shadow11190.github.io/battery-lens/)** · [網站內操作教學](https://shadow11190.github.io/battery-lens/#guide)
+
 繁體中文電池報告分析網站。純 HTML/CSS/JavaScript，不需後端或安裝依賴，可直接部署到 GitHub Pages。檔案在瀏覽器的 Web Worker 中解析，沒有報告上傳、追蹤程式或 localStorage。
 
 ## 使用網站
